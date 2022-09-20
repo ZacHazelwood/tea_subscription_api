@@ -3,6 +3,9 @@ require 'rails_helper'
 RSpec.describe "Subscription POST Request" do
   describe "happy path" do
     it 'creates a customer subscription' do
+      Customer.destroy_all
+      Tea.destroy_all
+      Subscription.destroy_all
       customer = Customer.create!(first_name: "Zac", last_name: "Hazelwood", email: "email@gmail.com", address: "123 Real St")
       tea = Tea.create!(title: "Earl Grey", description: "A fine tea.", temperature: 120, brew_time: 2)
       subscription_params =
@@ -30,6 +33,56 @@ RSpec.describe "Subscription POST Request" do
       expect(subscription[:data][:attributes][:frequency]).to be_a String
 
       expect(subscription[:data][:attributes]).to_not have_key(:brew_time)
+    end
+  end
+
+  describe "sad paths" do
+    it "cannot create a subscription without required params" do
+      Customer.destroy_all
+      Tea.destroy_all
+      Subscription.destroy_all
+      customer = Customer.create!(first_name: "Zac", last_name: "Hazelwood", email: "email@gmail.com", address: "123 Real St")
+      tea = Tea.create!(title: "Earl Grey", description: "A fine tea.", temperature: 120, brew_time: 2)
+      subscription_params =
+        {
+          title: "Earl Grey Weekly",
+          price: 19.99,
+          tea_id: tea.id,
+          frequency: ""
+        }
+      headers = {"CONTENT_TYPE" => "application/json"}
+      post "/api/v1/customers/#{customer.id}/subscriptions", headers: headers, params: JSON.generate(subscription_params)
+
+      subscription = JSON.parse(response.body, symbolize_names: true)
+
+      expect(response).to_not be_successful
+      expect(response).to have_http_status(400)
+      expect(subscription).to have_key(:error)
+      expect(subscription[:error]).to eq("Frequency can't be blank")
+    end
+
+    it "cannot create a subscription without tea" do
+      Customer.destroy_all
+      Tea.destroy_all
+      Subscription.destroy_all
+      customer = Customer.create!(first_name: "Zac", last_name: "Hazelwood", email: "email@gmail.com", address: "123 Real St")
+      tea = Tea.create!(title: "Earl Grey", description: "A fine tea.", temperature: 120, brew_time: 2)
+      subscription_params =
+        {
+          title: "Earl Grey Weekly",
+          price: 19.99,
+          tea_id: nil,
+          frequency: 0
+        }
+      headers = {"CONTENT_TYPE" => "application/json"}
+      post "/api/v1/customers/#{customer.id}/subscriptions", headers: headers, params: JSON.generate(subscription_params)
+
+      subscription = JSON.parse(response.body, symbolize_names: true)
+
+      expect(response).to_not be_successful
+      expect(response).to have_http_status(400)
+      expect(subscription).to have_key(:error)
+      expect(subscription[:error]).to eq("Tea must exist")
     end
   end
 end
