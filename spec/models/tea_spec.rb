@@ -7,4 +7,8 @@ RSpec.describe Tea do
     it { should validate_presence_of :temperature }
     it { should validate_presence_of :brew_time }
   end
+
+  describe 'relationships' do
+    it { should have_many :subscriptions }
+  end  
 end
