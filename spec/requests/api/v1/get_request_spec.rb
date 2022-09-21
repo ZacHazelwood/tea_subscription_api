@@ -36,4 +36,44 @@ RSpec.describe "Subscription GET Request, Index" do
       expect(sub_2[:frequency]).to eq("monthly")
     end
   end
+
+  describe "sad paths" do
+    it "sends a successful response if no subscriptions are present" do
+      Customer.destroy_all
+      Tea.destroy_all
+      Subscription.destroy_all
+      customer = Customer.create!(first_name: "Zac", last_name: "Hazelwood", email: "email@gmail.com", address: "123 Real St")
+      tea_1 = Tea.create!(title: "Earl Grey", description: "A fine tea.", temperature: 120, brew_time: 2)
+      tea_2 = Tea.create!(title: "Citrus", description: "Probably not a tea.", temperature: 110, brew_time: 3)
+
+      get "/api/v1/customers/#{customer.id}/subscriptions"
+
+      expect(response).to be_successful
+      expect(response.status).to eq(200)
+
+      subscriptions = JSON.parse(response.body, symbolize_names: true)
+
+      expect(subscriptions).to have_key :message
+      expect(subscriptions[:message]) .to eq("Customer has no subscriptions.")
+    end
+
+    it "sends an invalid response if customer does not exist" do
+      Customer.destroy_all
+      Tea.destroy_all
+      Subscription.destroy_all
+      customer = Customer.create!(id: 1, first_name: "Zac", last_name: "Hazelwood", email: "email@gmail.com", address: "123 Real St")
+      tea_1 = Tea.create!(title: "Earl Grey", description: "A fine tea.", temperature: 120, brew_time: 2)
+      tea_2 = Tea.create!(title: "Citrus", description: "Probably not a tea.", temperature: 110, brew_time: 3)
+
+      get "/api/v1/customers/2/subscriptions"
+
+      expect(response).to_not be_successful
+      expect(response.status).to eq(400)
+
+      subscriptions = JSON.parse(response.body, symbolize_names: true)
+
+      expect(subscriptions).to have_key :error
+      expect(subscriptions[:error]).to eq("Customer ID does not exist.")
+    end
+  end
 end
