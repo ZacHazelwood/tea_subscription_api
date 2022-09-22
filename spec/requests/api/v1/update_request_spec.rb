@@ -96,4 +96,59 @@ RSpec.describe 'Subscription PATCH Request' do
       expect(updated[:data][:attributes][:frequency]).to eq("monthly")
     end
   end
+
+  describe "sad path" do
+    it "cannot update without required parameters" do
+      Customer.destroy_all
+      Tea.destroy_all
+      Subscription.destroy_all
+      customer = Customer.create!(first_name: "Zac", last_name: "Hazelwood", email: "email@gmail.com", address: "123 Real St")
+      tea = Tea.create!(title: "Earl Grey", description: "A fine tea.", temperature: 120, brew_time: 2)
+      subscription = customer.subscriptions.create!(title: "Earl Grey Weekly", price: 19.99, tea_id: tea.id)
+
+      update_params =
+        {
+          subscription_id: subscription.id,
+          frequency: ""
+        }
+      headers = {"CONTENT_TYPE" => "application/json"}
+
+      patch "/api/v1/customers/#{customer.id}/subscriptions/#{subscription.id}", headers: headers, params: JSON.generate(update_params)
+
+      updated = JSON.parse(response.body, symbolize_names: true)
+
+      expect(response).to_not be_successful
+      expect(response).to have_http_status(400)
+
+      expect(updated).to have_key :error
+      expect(updated[:error]).to eq("Frequency can't be blank")
+    end
+
+    it "cannot update without a subscription ID" do
+      Customer.destroy_all
+      Tea.destroy_all
+      Subscription.destroy_all
+      customer = Customer.create!(first_name: "Zac", last_name: "Hazelwood", email: "email@gmail.com", address: "123 Real St")
+      tea = Tea.create!(title: "Earl Grey", description: "A fine tea.", temperature: 120, brew_time: 2)
+      subscription = customer.subscriptions.create!(title: "Earl Grey Weekly", price: 19.99, tea_id: tea.id)
+
+      update_params =
+        {
+          title: "Earl Grey Monthly",
+          price: 39.99,
+          frequency: 1
+        }
+      headers = {"CONTENT_TYPE" => "application/json"}
+
+      patch "/api/v1/customers/#{customer.id}/subscriptions/#{subscription.id+1000}", headers: headers, params: JSON.generate(update_params)
+
+      updated = JSON.parse(response.body, symbolize_names: true)
+
+      expect(response).to_not be_successful
+      expect(response).to have_http_status(400)
+
+      expect(updated).to have_key :error
+      expect(updated[:error]).to eq("Invalid Subscription ID")
+    end
+  end
 end
